@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vue js 애완용품샵</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx" crossorigin="anonymous">
+    <link href="assets/css/app.css" real="stylesheet" type="text/css">
+    <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+    <script src="utils.js"></script>
+    <style>
+        /* 텍스트 깜빡임 */
+        @keyframes blink-effect {
+            50% {
+                opacity: 0;
+            }
+        }
+
+        .blink {
+            animation: blink-effect 1s step-end infinite;
+
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <header class="navbar navbar-expend-lg">
+            <h1 v-text="sitename"></h1>
+            <div v-if="canOrder" class="nav justify-content-end cart">
+                <button type="button" class="btn btn-success btn lg" @click=showCheckout>
+                    <span> 장바구니 {{cartItemCount}}</span>
+                    <span> 주문하기</span>
+                </button>
+                <button type="button" class="btn btn-danger btn lg" @click="removeCart">장바구니 비우기</button>
+            </div>
+
+            <div v-else="canOrder" class="nav justify-content-end cart">
+                <button type="button" class="btn btn-secondary btn lg" @click=showCheckout>
+                    <span> 장바구니 {{cartItemCount}}</span>
+                    <span> 주문하기</span>
+                </button>
+                <button type="button" class="btn btn-secondary btn lg" @click="removeCart">장바구니 비우기</button>
+            </div>
+        </header>
+        <main>
+            <div class="row product">
+                <div v-if="showProduct" class="row">
+                    <div class="col">
+                        <figure>
+                            <img v-bind:src="product.image" alt="">
+                        </figure>
+                    </div>
+                    <div class="col col-expand">
+                        <h1 v-text="product.title"></h1>
+                        <p v-html="product.description"></p>
+                        <p>{{product.price | formatPrice}}</p>
+                        <!-- 4개 이상일 때-->
+                        <span v-if="con1">
+                            <span>
+                                <p>현재 재고량: {{ remaindInventory }}</p>
+                            </span>
+                        </span>
+                        <!-- 3개 이하 1개 이상일 때 깜빡이는 효과-->
+                        <span v-else-if="con2">
+                            <span>
+                                <p class="blink">현재 재고량: {{ remaindInventory }}</p>
+                            </span>
+                        </span>
+                        <!-- 0개일 때 회색&삭제줄 표시-->
+                        <span v-else>
+                            <span class="text-secondary" style="text-decoration-line: line-through">
+                                <p>현재 재고량: {{ remaindInventory }}</p>
+                            </span>
+                        </span>
+                        <button v-if="canAddToCart" class="btn btn-primary btn-lg" @click="addToCart">장바구니 담기</button>
+                        <button v-else disabled class="btn btn-secondary btn-lg">장바구니 담기</button>
+
+                    </div>
+                </div>
+                <div v-else class="row">
+                    <h3>구매자</h3>
+                    <hr>
+                    <div class="col-md-6">
+                        <Strong>이름: </Strong> <!-- 공백 제거 - .trim 키워드 -->
+                        <input v-model.trim="order.name" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <div class="col-md-12 boxes">
+                            <div class="col-md-12"><strong>결제유형: </strong></div>
+                            <input type="radio" id="cash" :value="order.cash" v-model="order.type">
+                            <label for="cash">현금</label>
+                            <input type="radio" id="card" :value="order.card" v-model="order.type">
+                            <label for="card">카드</label>
+                            <input type="radio" id="point" :value="order.point" v-model="order.type">
+                            <label for="point">포인트</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="col-md-12"><strong>연락처: </strong></div>
+                        <div class="col-md-12">
+                            <input v-model="order.phone" class="form-control">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <strong>주소</strong><br>
+                        <strong>우편번호 </strong>
+                        <div class="col-md-6">
+                            <input v-model.number="order.zip" class="form-control">
+                        </div>
+                        <strong>주소</strong>
+                        <div class="col-md-12">
+                            <input v-model="order.address" class="form-control">
+                        </div>
+                        <strong>상세주소</strong>
+                        <div class="col-md-12">
+                            <input v-model="order.DetailedAddress" class="form-control">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="col-md-12"><strong>요청사항: </strong></div>
+                        <div class="col-md-12">
+                            <select v-model="order.memo" class="form-control">
+                                <option disabled value="">요청사항</option>
+                                <option v-for="(v, k) in memos" :value="k">{{ v }}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="col-md-6 boxes">
+                            <input type="checkbox" id="gift" value="true" v-bind:true-value="order.sendGift"
+                                v-bind:false-value="order.dontSendGift" v-model="order.gift">
+                            <label for="gift">선물로 보내기</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="col-md-6 boxes">
+                            <input type="radio" id="home" :value="order.home" v-model="order.method">
+                            <label for="home">자택</label>
+                            <input type="radio" id="office" :value="order.office" v-model="order.method">
+                            <label for="office">직장</label>
+                        </div>
+                    </div>
+
+                    <!-- 구매자와 동일 버튼 -->
+                    <br><br><br>
+                    <div class="form-group">
+                        <div class="col-md-6 boxes">
+                            <input type="checkbox" id="destination" value="true" v-model="order.destination" >
+                            <label for="destination">구매자와 동일</label>
+                        </div>
+                    </div>
+                    <hr>
+
+                    <div v-if="order.destination" class="form-group">
+                        <div class="col-md-6">
+                            <Strong>수령인명: </Strong> <!-- 공백 제거 - .trim 키워드 -->
+                            <input v-model.trim="order.name" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <div class="col-md-12"><strong>연락처: </strong></div>
+                            <div class="col-md-12">
+                                <input v-model="order.phone" class="form-control" >
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <strong>우편번호</strong>
+                            <div class="col-md-6">
+                                <input v-model.number="order.zip" class="form-control">
+                            </div>
+                            <strong>주소</strong>
+                            <div class="col-md-12">
+                                <input v-model.trim="order.address" class="form-control">
+                            </div>
+                            <strong>상세주소</strong>
+                            <div class="col-md-12">
+                                <input v-model.trim="order.DetailedAddress" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else class="form-group">
+                        <div class="col-md-6">
+                            <Strong>수령인명: </Strong> <!-- 공백 제거 - .trim 키워드 -->
+                            <input v-model.trim="order.deliveName" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <div class="col-md-12"><strong>연락처: </strong></div>
+                            <div class="col-md-12">
+                                <input v-model="order.delivePhone" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <strong>우편번호 </strong>
+                            <div class="col-md-6">
+                                <input v-model.number="order.deliveZip" class="form-control">
+                            </div>
+                            <strong>주소</strong>
+                            <div class="col-md-12">
+                                <input v-model.trim="order.deliveAddress" class="form-control">
+                            </div>
+                            <strong>상세주소</strong>
+                            <div class="col-md-12">
+                                <input v-model.trim="order.deliveDetailedAddress" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="col-md-12">
+                            <button type="submit" class="btn btn-primary submit" @click="submitForm">주문하기</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        window.onload = function () {
+            let temp = JSON.parse(localStorage.getItem("cart"));
+            if (temp) {
+                console.log(temp);
+                webstore.cart = temp;
+            }
+        }
+        let webstore = new Vue({
+            el: "#app",
+            data: {
+                sitename: 'Vue.js 애완용품샵',
+                product: {
+                    id: 1001,
+                    title: "고양이 사료, 25파운드",
+                    description: "당신의 고양이를 위한 <em>거부할 수 없는</em>, " +
+                        "유기농 25파운드 사료입니다.",
+                    price: 2000,
+                    image: "assets/images/product-fullsize.png",
+                    inventory: 5,
+                },
+                cart: [],
+                showProduct: true,
+                order: {
+                    name: '',
+                    type: '현금',
+                    cash: '현금',
+                    card: '카드',
+                    point: '포인트',
+                    phone: '',
+                    address: '',
+                    DetailedAddress: '',
+                    zip: '',
+                    delivePhone: '',
+                    deliveAddress: '',
+                    deliveDetailAddress: '',
+                    deliveZip: '',
+                    method: '자택',
+                    gift: 'false',
+                    sendGift: '선물 배송',
+                    dontSendGift: '선물 배송 아님',
+                    home: '자택',
+                    office: '직장',
+                    destination: 'false',
+                },
+                memos: {
+                    배송전연락: "배송 전에 미리 연락 바랍니다.",
+                    경비실: "부재시 경비실에 맡겨 주세요.",
+                    전화문자: "부재시 전화 주시거나 문자 남겨 주세요.",
+                    문앞: "부재시 문 앞에 두세요.",
+                },
+            },
+            computed: {
+                cartItemCount() {
+                    return this.cart.length;
+                },
+                productName() {
+                    return `[${this.product.id + 1}] ${this.product.title}`
+                },
+                remaindInventory() {
+                    let v = this.product.inventory - this.cart.length;
+                    return v > 0 ? `${v}개` : `없음`;
+                },
+                canAddToCart() {
+                    return this.product.inventory > this.cartItemCount;
+                },
+                canOrder() {
+                    return this.cart != 0;
+                },
+                // 조건
+                con1() {
+                    return this.product.inventory - this.cart.length > 3;
+                },
+                con2() {
+                    return this.product.inventory - this.cart.length > 0;
+                },
+            },
+            filters: {
+                formatPrice(price) {
+                    if (!parseFloat(price))
+                        return "Free";
+                    if (price > 99999)
+                        return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(price);
+                }
+            },
+            methods: {
+                addToCart: function () {
+                    if (this.product.inventory > this.cart.length) {
+                        this.cart.push(this.product.id);
+                        this.saveCart();
+                    }
+                },
+                showCheckout() {
+                    if (this.cartItemCount === 0) {
+                        alert("주문할 수 없습니다.")
+                    } else {
+                        this.showProduct = !!!this.showProduct;
+                    }
+                },
+                removeCart() {
+                    this.cart.splice(0);
+                    this.saveCart();
+                },
+                saveCart() {
+                    window.localStorage.setItem("cart", JSON.stringify(this.cart));
+                },
+                submitForm() {
+                    let check = /^(01[016789])(-{0,1})([0-9]{3,4})(-{0,1})([0-9]{4})$/;
+                    if (this.order.destination == true) {
+                        if (this.order.name == '' || this.order.phone == '' || this.order.zip == '' || this.order.address == '' || this.order.DetailedAddress == '' || this.order.memo == '' || this.order.method == '') {
+                            alert("비어있는 값이 있습니다.");
+                        } else if (!check.test(this.order.phone)) {
+                            alert("올바르지 않은 전화번호입니다.");
+                        } else { 
+                            alert('주문하기 제출 완료');
+                        }
+                    } else if (this.order.destination == false) {
+                        if (this.order.deliveName == '' || this.order.delivePhone == '' || this.order.deliveZip == '' || this.order.deliveAddress == '' || this.order.deliveDetailedAddress == '') {
+                            alert("비어있는 값이 있습니다.");
+                        } else if (!check.test(this.order.delivePhone)) {
+                            alert("올바르지 않은 전화번호입니다.");
+                        } else { 
+                            alert('주문하기 제출 완료');
+                        }
+                    }
+                },
+                
+                
+            }
+        });
+    </script>
+</body>
+
+</html>
